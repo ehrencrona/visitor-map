@@ -5,7 +5,7 @@
   <name>recommend</name>
 
   <groupId>it.velik.recommend</groupId>
-  <artifactId>recommend</artifactId>
+  <artifactId>log</artifactId>
   <version>0.1</version>
 
   <dependencies>
