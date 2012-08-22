@@ -45,12 +45,23 @@ public class FileAccessLog implements AccessLog {
 		try {
 			File file = new File(fileName);
 
+			try {
+				if (!file.getCanonicalFile().getParentFile().exists()) {
+					LOGGER.log(Level.WARNING, "The log file directory " + file.getParentFile().getAbsolutePath()
+							+ " did not exist. Creating it.");
+					file.getParentFile().mkdirs();
+				}
+			} catch (Exception e) {
+				LOGGER.log(Level.WARNING, "While checking for directory existence or while creating it (log file: "
+						+ file + "): " + e, e);
+			}
+
 			stream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file, append), 16000));
 
-			LOGGER.log(Level.WARNING, "Initialized access log " + file.getCanonicalPath() + ".");
+			LOGGER.log(Level.INFO, "Initialized access log " + file.getCanonicalPath() + ".");
 		} catch (IOException e) {
-			LOGGER.log(Level.WARNING, "Could not create today's log " + fileName + ". Will stop logging: "
-					+ e.getMessage(), e);
+			LOGGER.log(Level.WARNING,
+					"Could not create today's log " + fileName + ". Will stop logging: " + e.getMessage(), e);
 
 			stream = new DataOutputStream(new NullOutputStream());
 		}
@@ -99,5 +110,9 @@ public class FileAccessLog implements AccessLog {
 
 	public File getFile() {
 		return new File(fileName);
+	}
+
+	public String toString() {
+		return fileName;
 	}
 }

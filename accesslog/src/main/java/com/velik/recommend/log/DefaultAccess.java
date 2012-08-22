@@ -26,4 +26,8 @@ public class DefaultAccess implements Access {
 		return userId;
 	}
 
+	@Override
+	public String toString() {
+		return userId + " accessed " + major + "." + minor;
+	}
 }

@@ -25,13 +25,15 @@ public class SpideredHtmlFile {
 	private FileRotator rotator;
 
 	public SpideredHtmlFile(File file) throws FileNotFoundException {
-		rotator = new FileRotator(file);
+		rotator = new FileRotator(file, true);
 
 		open();
 	}
 
 	private void open() throws FileNotFoundException {
 		this.file = rotator.generateFileName();
+
+		System.out.println("Opened file " + file.getAbsolutePath());
 
 		try {
 			Writer streamWriter = new OutputStreamWriter(new FileOutputStream(file, true), "UTF-8");
@@ -66,8 +68,7 @@ public class SpideredHtmlFile {
 				try {
 					open();
 				} catch (FileNotFoundException e) {
-					throw new RuntimeException("Cannot open rotated file " + rotator.generateFileName()
-							+ ": " + e);
+					throw new RuntimeException("Cannot open rotated file " + rotator.generateFileName() + ": " + e);
 				}
 			}
 		}

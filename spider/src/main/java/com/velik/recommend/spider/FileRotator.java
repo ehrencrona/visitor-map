@@ -8,7 +8,7 @@ public class FileRotator {
 	private String fileSuffix;
 	private int fileIndex;
 
-	public FileRotator(File file) {
+	public FileRotator(File file, boolean goToNextFree) {
 		baseFile = file.getName();
 		int i = baseFile.lastIndexOf('.');
 
@@ -21,12 +21,16 @@ public class FileRotator {
 
 		fileIndex = 1;
 
-		while (fileExists()) {
-			fileIndex++;
+		if (goToNextFree) {
+			while (fileExists()) {
+				fileIndex++;
+			}
 		}
+
+		System.out.println("Next file index is " + fileIndex + ".");
 	}
 
-	private boolean fileExists() {
+	boolean fileExists() {
 		return generateFileName().exists() || generateFileName(".zip").exists();
 	}
 

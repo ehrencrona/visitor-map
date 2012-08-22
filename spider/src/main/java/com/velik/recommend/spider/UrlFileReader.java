@@ -67,9 +67,11 @@ public class UrlFileReader implements Iterable<URL> {
 	}
 
 	public void close() {
-		try {
-			reader.close();
-		} catch (IOException e) {
+		if (reader != null) {
+			try {
+				reader.close();
+			} catch (IOException e) {
+			}
 		}
 	}
 }

@@ -12,13 +12,13 @@ import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.velik.util.FetchingIterator;
+import com.velik.recommend.util.FetchingIterator;
 
 public class AccessLogReader implements Iterable<Access> {
 	private static final Logger LOGGER = Logger.getLogger(AccessLogReader.class.getName());
 	private File file;
 
-	AccessLogReader(File file) {
+	public AccessLogReader(File file) {
 		this.file = file;
 	}
 

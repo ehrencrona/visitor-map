@@ -31,7 +31,7 @@ public class PersistedVisitedUrls extends VisitedUrls {
 			try {
 				file.write(url);
 			} catch (IOException e) {
-				throw new RuntimeException("Writing to " + file + " failed.");
+				throw new RuntimeException("Writing to " + file + " failed: " + e, e);
 			}
 		}
 

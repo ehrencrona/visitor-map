@@ -40,7 +40,7 @@ public class VisitedUrls implements UrlCollection {
 
 	@Override
 	public boolean contains(URL url) {
-		Set<Utf8String> paths = pathsByHost.get(url.getHost());
+		Set<Utf8String> paths = pathsByHost.get(url.getHost().toLowerCase());
 
 		if (paths == null) {
 			return false;
@@ -57,7 +57,7 @@ public class VisitedUrls implements UrlCollection {
 
 	@Override
 	public boolean add(URL url) {
-		Set<Utf8String> paths = pathsByHost.get(url.getHost());
+		Set<Utf8String> paths = pathsByHost.get(url.getHost().toLowerCase());
 
 		if (paths == null) {
 			paths = new HashSet<Utf8String>();
@@ -77,8 +77,7 @@ public class VisitedUrls implements UrlCollection {
 	@Override
 	public Iterator<URL> iterator() {
 		return new FetchingIterator<URL>() {
-			private Iterator<Entry<String, Set<Utf8String>>> entryIterator = pathsByHost.entrySet()
-					.iterator();
+			private Iterator<Entry<String, Set<Utf8String>>> entryIterator = pathsByHost.entrySet().iterator();
 			private Iterator<Utf8String> pathIterator = null;
 			private String domain;
 
@@ -105,4 +104,13 @@ public class VisitedUrls implements UrlCollection {
 		};
 	}
 
+	public boolean isEmpty() {
+		for (Entry<String, Set<Utf8String>> entry : pathsByHost.entrySet()) {
+			if (!entry.getValue().isEmpty()) {
+				return false;
+			}
+		}
+
+		return true;
+	}
 }

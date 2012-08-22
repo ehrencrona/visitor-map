@@ -21,7 +21,11 @@ public class UrlsToVisit extends VisitedUrls implements UrlCollection {
 	}
 
 	public URL next(String host) throws NoMoreUrlsException {
-		Set<Utf8String> paths = pathsByHost.get(host);
+		Set<Utf8String> paths = pathsByHost.get(host.toLowerCase());
+
+		if (paths == null) {
+			throw new NoMoreUrlsException();
+		}
 
 		Iterator<Utf8String> it = paths.iterator();
 

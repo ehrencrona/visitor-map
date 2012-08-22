@@ -14,17 +14,17 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.velik.util.ContentId;
-import com.velik.util.InvalidContentIdException;
+import com.velik.recommend.util.ContentId;
+import com.velik.recommend.util.InvalidContentIdException;
 
 public class AccessLoggingFilter implements Filter {
-	private static final String GOOGLE_ANALYTICS_COOKIE = "__utmz";
+	private static final String GOOGLE_ANALYTICS_COOKIE = "__utma";
 
 	private static final Logger LOGGER = Logger.getLogger(AccessLoggingFilter.class.getName());
 
 	private static final String LOG_FILE_PARAMETER = "logFile";
 
-	private static final String DEFAULT_LOG_FILE = "read-articles-by-user.log";
+	private static final String DEFAULT_LOG_FILE = "read-articles-by-user";
 
 	private static final int MAX_RUNTIME_EXCEPTIONS = 50;
 
@@ -38,18 +38,21 @@ public class AccessLoggingFilter implements Filter {
 
 	private AccessLog accessLog;
 
+	private int requestsWithoutGoogleCookie = 0;
+
 	private int logInvalidRequests = 100;
 
 	private volatile int runtimeExceptions;
 
 	@Override
 	public void destroy() {
+		LOGGER.log(Level.INFO, "Closing access log " + accessLog + "...");
 		accessLog.close();
 	}
 
 	@Override
-	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain)
-			throws IOException, ServletException {
+	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException,
+			ServletException {
 		if (request instanceof HttpServletRequest && response instanceof HttpServletResponse) {
 			HttpServletRequest httpRequest = (HttpServletRequest) request;
 			HttpServletResponse httpResponse = (HttpServletResponse) response;
@@ -73,8 +76,8 @@ public class AccessLoggingFilter implements Filter {
 						isLogging = false;
 					}
 				} catch (Throwable e) {
-					LOGGER.log(Level.WARNING, "Runtime exception logging "
-							+ getRequestDescription(httpRequest) + ": " + e, e);
+					LOGGER.log(Level.WARNING, "Runtime exception logging " + getRequestDescription(httpRequest) + ": "
+							+ e, e);
 
 					if (runtimeExceptions++ > MAX_RUNTIME_EXCEPTIONS) {
 						LOGGER.log(Level.WARNING, "Too many runtime exceptions. Will stop logging.");
@@ -87,8 +90,7 @@ public class AccessLoggingFilter implements Filter {
 		filterChain.doFilter(request, response);
 	}
 
-	private boolean isControlParameter(HttpServletRequest request, HttpServletResponse response)
-			throws IOException {
+	private boolean isControlParameter(HttpServletRequest request, HttpServletResponse response) throws IOException {
 		if (CONTROL_KEY.equals(request.getParameter("key"))) {
 			String logging = request.getParameter("logging");
 
@@ -105,9 +107,10 @@ public class AccessLoggingFilter implements Filter {
 			response.setContentType("text/html");
 
 			response.getOutputStream().print(
-					"<body><ul><li>isLogging: " + isLogging + "</li>" + "<li>logInvalidRequests: "
-							+ logInvalidRequests + "</li>" + "<li>noOfLogs: " + noOfLogs + "</li>"
-							+ "<li>runtimeExceptions: " + runtimeExceptions + "</li></ul></body>");
+					"<body><ul><li>isLogging: " + isLogging + "</li>" + "<li>logInvalidRequests: " + logInvalidRequests
+							+ "</li>" + "<li>noOfLogs: " + noOfLogs + "</li>" + "<li>requestsWithoutGoogleCookie: "
+							+ requestsWithoutGoogleCookie + "</li>" + "<li>runtimeExceptions: " + runtimeExceptions
+							+ "</li></ul></body>");
 
 			return true;
 		} else {
@@ -124,10 +127,11 @@ public class AccessLoggingFilter implements Filter {
 			accessLog.log(new DefaultAccess(contentId.getMajor(), contentId.getMinor(), googleUserId));
 		} catch (InvalidRequestException e) {
 			if (logInvalidRequests-- > 0) {
-				LOGGER.log(Level.WARNING, "When logging request " + getRequestDescription(httpRequest) + ": "
-						+ e.getMessage());
+				LOGGER.log(Level.WARNING,
+						"When logging request " + getRequestDescription(httpRequest) + ": " + e.getMessage());
 			}
 		} catch (NoTrackingCookieException e) {
+			requestsWithoutGoogleCookie++;
 			// fine.
 		}
 	}
@@ -136,11 +140,16 @@ public class AccessLoggingFilter implements Filter {
 		return request.getRequestURI() + " from " + request.getRemoteAddr();
 	}
 
-	private long getGoogleUserId(HttpServletRequest request) throws InvalidRequestException,
-			NoTrackingCookieException {
+	private long getGoogleUserId(HttpServletRequest request) throws InvalidRequestException, NoTrackingCookieException {
 		String googleCode = null;
 
-		for (Cookie cookie : request.getCookies()) {
+		Cookie[] cookies = request.getCookies();
+
+		if (cookies == null) {
+			throw new NoTrackingCookieException("User has no cookies.");
+		}
+
+		for (Cookie cookie : cookies) {
 			if (cookie.getName().equals(GOOGLE_ANALYTICS_COOKIE)) {
 				googleCode = cookie.getValue();
 			}
@@ -150,18 +159,28 @@ public class AccessLoggingFilter implements Filter {
 			throw new NoTrackingCookieException("Request did not provide a Google Analytics cookie.");
 		}
 
+		return getUserId(googleCode);
+	}
+
+	public static long getUserId(String googleCode) throws InvalidRequestException {
 		int i = googleCode.indexOf('.');
 
 		if (i > 0) {
-			googleCode = googleCode.substring(0, i);
+			int j = googleCode.indexOf('.', i + 1);
+
+			if (j > 0) {
+				googleCode = googleCode.substring(i + 1, j);
+
+				try {
+					return Long.parseLong(googleCode);
+				} catch (NumberFormatException e) {
+					throw new InvalidRequestException("Google Analytics cookie between second and third dot \""
+							+ googleCode + "\" was not a number.");
+				}
+			}
 		}
 
-		try {
-			return Long.parseLong(googleCode.substring(0, i));
-		} catch (NumberFormatException e) {
-			throw new InvalidRequestException("Google Analytics cookie until first dot \"" + googleCode
-					+ "\" was not a number.");
-		}
+		throw new InvalidRequestException("Google Analytics cookie " + googleCode + "did not contain two dots.");
 	}
 
 	private ContentId getContentId(HttpServletRequest request) throws InvalidRequestException {
@@ -188,8 +207,7 @@ public class AccessLoggingFilter implements Filter {
 		try {
 			return new ContentId(parameter);
 		} catch (InvalidContentIdException e) {
-			throw new InvalidRequestException(e.getMessage() + " (query string " + request.getQueryString()
-					+ ").");
+			throw new InvalidRequestException(e.getMessage() + " (query string " + request.getQueryString() + ").");
 		}
 	}
 
@@ -198,7 +216,11 @@ public class AccessLoggingFilter implements Filter {
 		String logFileName = config.getInitParameter(LOG_FILE_PARAMETER);
 
 		if (logFileName == null) {
-			LOGGER.log(Level.WARNING, "No log file name speciifed as " + LOG_FILE_PARAMETER + " parameter.");
+			logFileName = System.getProperty("AccessLoggingFilter." + LOG_FILE_PARAMETER);
+		}
+
+		if (logFileName == null) {
+			LOGGER.log(Level.WARNING, "No log file name specified as " + LOG_FILE_PARAMETER + " parameter.");
 
 			logFileName = DEFAULT_LOG_FILE;
 		}

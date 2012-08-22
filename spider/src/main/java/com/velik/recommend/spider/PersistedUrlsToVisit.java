@@ -30,6 +30,16 @@ public class PersistedUrlsToVisit extends UrlsToVisit {
 	}
 
 	public void persist() {
+		if (file.exists()) {
+			File backup = new File(file.getPath() + ".backup");
+
+			if (backup.exists()) {
+				backup.delete();
+			}
+
+			file.renameTo(backup);
+		}
+
 		try {
 			UrlFileWriter writer = new UrlFileWriter(file, false);
 

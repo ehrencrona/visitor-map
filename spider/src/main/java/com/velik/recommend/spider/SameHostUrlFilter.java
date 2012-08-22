@@ -6,7 +6,7 @@ public class SameHostUrlFilter implements UrlFilter {
 
 	@Override
 	public boolean isFollow(URL link, URL from) {
-		return link.getHost().equals(from.getHost());
+		return link.getHost().equalsIgnoreCase(from.getHost());
 	}
 
 }
