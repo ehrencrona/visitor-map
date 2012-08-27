@@ -2,7 +2,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
   <modelVersion>4.0.0</modelVersion>
-  <name>recommend</name>
+  <name>accesslog</name>
 
   <groupId>it.velik.recommend</groupId>
   <artifactId>accesslog</artifactId>
@@ -10,6 +10,12 @@
 
   <dependencies>
     
+    <dependency>
+      <groupId>it.velik</groupId>
+      <artifactId>util</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>servlet-api</artifactId>

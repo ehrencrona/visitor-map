@@ -1,10 +1,10 @@
-package com.velik.recommend.stats;
+package com.velik.recommend.map;
 
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.velik.recommend.stats.StressMap.MapArea;
-import com.velik.recommend.stats.StressMap.Move;
+import com.velik.recommend.map.StressMap.MapArea;
+import com.velik.recommend.map.StressMap.Move;
 
 public class StressMapTest {
 
@@ -57,7 +57,7 @@ public class StressMapTest {
 
 		area = map.area(3, 2, 1, 2);
 		area.grow(1);
-		Assert.assertEquals("((2,1),(2,3))", area.toString());
+		Assert.assertEquals("((1,1),(0,3))", area.toString());
 	}
 
 	@Test
@@ -169,15 +169,15 @@ public class StressMapTest {
 
 		Assert.assertEquals(1, move.radius);
 		Assert.assertEquals("(7,7)", move.from.toString());
-		Assert.assertEquals("(4,4)", move.to.toString());
+		Assert.assertEquals("(4,7)", move.to.toString());
 
 		map = new StressMap(new LinearStresses(128), 16, 8);
 		map.random = random;
 		move = map.randomMove(StressMap.START_TEMPERATURE);
 
-		Assert.assertEquals(1, move.radius);
+		Assert.assertEquals(3, move.radius);
 		Assert.assertEquals("(15,7)", move.from.toString());
-		Assert.assertEquals("(12,4)", move.to.toString());
+		Assert.assertEquals("(8,7)", move.to.toString());
 
 		map = new StressMap(new LinearStresses(256), 16, 16);
 		map.random = random;
@@ -185,13 +185,13 @@ public class StressMapTest {
 
 		Assert.assertEquals(3, move.radius);
 		Assert.assertEquals("(15,15)", move.from.toString());
-		Assert.assertEquals("(8,8)", move.to.toString());
+		Assert.assertEquals("(8,15)", move.to.toString());
 
 		move = map.randomMove(0);
 
 		Assert.assertEquals(0, move.radius);
 		Assert.assertEquals("(15,15)", move.from.toString());
-		Assert.assertEquals("(14,14)", move.to.toString());
+		Assert.assertEquals("(14,15)", move.to.toString());
 	}
 
 	@Test
@@ -210,6 +210,15 @@ public class StressMapTest {
 	@Test
 	public void testRandomStressAndStressChangeAgree() {
 		StressMap map = new StressMap(new LinearStresses(64), 8, 8);
+		map.setForceReach(1);
+
+		testRandomStressAndStressChangeAgree(map);
+	}
+
+	@Test
+	public void testRandomStressAndStressChangeAgreeForce2() {
+		StressMap map = new StressMap(new LinearStresses(64), 8, 8);
+		map.setForceReach(2);
 
 		testRandomStressAndStressChangeAgree(map);
 	}
@@ -217,20 +226,67 @@ public class StressMapTest {
 	@Test
 	public void testRandomStressAndStressChangeAgreeRectangular() {
 		StressMap map = new StressMap(new LinearStresses(128), 16, 8);
+		map.setForceReach(1);
 
 		testRandomStressAndStressChangeAgree(map);
 	}
 
-	private void testRandomStressAndStressChangeAgree(StressMap map) {
+	@Test
+	public void testStressAndStressChangeAgreeRectangular() {
+		StressMap map = new StressMap(new LinearStresses(128), 16, 8);
 		map.setForceReach(1);
 
+		Move move = map.move(map.pos(7, 7), map.pos(2, 0), 1);
+
+		int change = move.calculateStressChange();
+
+		long stressBefore = map.calculateStress();
+		move.move();
+
+		long stressAfter = map.calculateStress();
+
+		Assert.assertEquals(change, stressAfter - stressBefore);
+	}
+
+	@Test
+	public void foo() {
+
+		RecordingStressMap map = new RecordingStressMap(new Stresses() {
+			@Override
+			public int size() {
+				return 64;
+			}
+
+			@Override
+			public int get(int i, int j) {
+				return Math.abs((i % 2) - (j % 2));
+			}
+		}, 8, 8);
+
+		Move move = map.move(map.pos(3, 0), map.pos(4, 4), 0);
+
+		int predictedChange = move.calculateStressChange();
+
+		map.clear();
+
+		long before = map.calculateStress();
+
+		move.move();
+
+		long after = map.calculateStress();
+
+		Assert.assertEquals(predictedChange, after - before);
+	}
+
+	private void testRandomStressAndStressChangeAgree(StressMap map) {
 		long stress = map.calculateStress();
 
 		for (int i = 0; i < 100; i++) {
-			Move move = map.randomMove(512 * 1024);
+			Move move = map.randomMove(map.random.nextInt(1024) * 1024);
 
 			int stressChange = move.calculateStressChange();
 
+			System.out.println(move);
 			move.move();
 
 			stress += stressChange;

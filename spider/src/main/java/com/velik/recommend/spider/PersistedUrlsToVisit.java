@@ -25,10 +25,6 @@ public class PersistedUrlsToVisit extends UrlsToVisit {
 		System.out.println("Read " + size() + " URLs from " + file + ".");
 	}
 
-	public boolean add(HashableUrl url) {
-		return add(url.toUrl());
-	}
-
 	public void persist() {
 		if (file.exists()) {
 			File backup = new File(file.getPath() + ".backup");

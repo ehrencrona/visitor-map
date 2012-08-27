@@ -1,4 +1,4 @@
-package com.velik.recommend.stats;
+package com.velik.recommend.map;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -63,6 +63,8 @@ public class RecordingStressMap extends StressMap {
 	}
 
 	public void clear() {
+		System.out.println("CLEAR");
+
 		stressByPositionPair.clear();
 		comparing = false;
 	}

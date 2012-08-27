@@ -1,0 +1,170 @@
+<html>
+
+<head>
+
+	<script src="jquery-1.7.2.min.js"></script>
+
+</head>
+
+<body>
+
+
+<canvas id="som" width="1000" height="500" style="width: 1000; height: 500">
+
+</canvas> 
+
+<div id="cellInfo" style="position:absolute; border-width: 1px; left: 100px; top: 100px; background-color: white; z: 10; padding: 5px">
+Hej
+</div>
+
+<script>
+
+var som;
+
+$.ajax({
+    url: "service/map",
+    dataType: "json",
+    success: function(json) {
+    	console.log("Loaded stresses.");
+
+		var c = document.getElementById("som");
+		
+		som = new Som(c);
+
+		som.setStresses(json.map);
+		som.setLinearScale(json.scale === "linear");
+		
+		som.draw();
+    },
+});
+
+$(document).ready(function() {
+	$("#som").mousemove(
+		function(eventInfo) {
+			if (!som) {
+				return;
+			}
+		
+			var parentOffset = $(this).offset(); 
+   			var x = eventInfo.pageX - parentOffset.left;
+   			var y = eventInfo.pageY - parentOffset.top;
+									
+			som.withCellInfo(x, y, function(cellInfo) {
+				var label = document.getElementById("cellInfo")
+				label.style.left = (cellInfo.cell.x2() + 8) + "px";
+				label.style.top = (cellInfo.cell.y2() + 8) + "px";
+				$(label).html(cellInfo.col + "x" + cellInfo.row + ": " + cellInfo.title + "<br/>" + cellInfo.department);
+			}); 
+		} 
+	);
+});
+
+var Som = function(canvas) {
+	var that = this;
+	
+	this.Cell = function(col, row) {		
+		this.x1 = function() {
+			return Math.round(col * canvas.width / that.cols());
+		};
+		
+		this.y1 = function() {
+			return Math.round(row * canvas.height / that.rows());
+		};
+		
+		this.x2 = function() {
+			return Math.round((col + 1) * canvas.width / that.cols()) - 1;
+		};
+		
+		this.y2 = function() {
+			return Math.round((row + 1) * canvas.height / that.rows()) - 1;
+		};
+	};
+
+	this.setStresses = function(stresses) {
+		this.stresses = stresses;
+	};
+	
+	this.setLinearScale = function(linearScale) {
+		this.linearScale = linearScale;
+	};
+	
+	this.cols = function() {
+		return this.stresses[0].length;	
+	};
+	
+	this.rows = function() {
+		return this.stresses.length;	
+	};
+
+	this.withCellInfo = function(x, y, f) {
+		var cols = this.cols();
+		var rows = this.rows(); 
+			
+		var col = Math.floor(cols * x / canvas.width); 
+		var row = Math.floor(rows * y / canvas.height); 
+		
+		if (col < 0 || row < 0) {
+			return;
+		}
+				
+		$.ajax({
+		    url: "service/cell/" + col + "x" + row,
+		    dataType: "json",
+		    success: function(json) {
+		    	json.cell = that.getCell(col, row);
+				f(json);
+		    },
+		});
+	};
+	
+	this.getCell = function(col, row) {
+		return new this.Cell(col, row);
+	};
+	
+	this.draw = function() {
+		var ctx = canvas.getContext("2d");
+				
+		var pad = function(s) {
+			return (s.length < 2 ? "0" + s : s);
+		}
+		
+		var cols = this.cols();
+		var rows = this.rows(); 
+
+		for (var i = 0; i < cols; i++) {
+			for (var j = 0; j < rows; j++) {
+				if (!(this.stresses.length > j && this.stresses[j].length > i)) {
+					continue;
+				}
+			
+				var stressColor = 255 - this.stresses[j][i];
+				
+				if (this.linearScale) {
+					stressColor = pad(stressColor.toString(16));
+					ctx.fillStyle = "#" + stressColor + stressColor + stressColor;
+				}
+				else {
+					var r = (stressColor % 16) * 16;
+					var g = Math.floor(stressColor / 16) * 16;
+					var b = 255 - Math.floor((r + g) / 2);
+					
+					ctx.fillStyle = "#" + pad(r.toString(16)) + pad(g.toString(16)) + pad(b.toString(16));
+				}
+				
+				cell = this.getCell(i, j);
+				
+				ctx.fillRect(cell.x1(),
+					cell.y1(),
+					cell.x2() - cell.x1(),
+					cell.y2() - cell.y1());
+			}
+		}
+	};
+	
+}
+
+
+</script>
+</body>
+
+</html>

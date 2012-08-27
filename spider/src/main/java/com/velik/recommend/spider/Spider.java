@@ -2,8 +2,10 @@ package com.velik.recommend.spider;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -13,6 +15,7 @@ import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipFile;
@@ -25,7 +28,7 @@ public class Spider {
 	private static final int TIME_BETWEEN_REVISITS = 10000;
 
 	private HostSpecificUrlShortener shortener;
-	private PersistedUrlsToVisit urlsToVisit;
+	private UrlsToVisit urlsToVisit;
 	private PersistedVisitedUrls visitedUrls;
 	private SpideredHtmlFile spideredHtmlFile;
 	private List<UrlFilter> urlFilters = new ArrayList<UrlFilter>();
@@ -33,8 +36,12 @@ public class Spider {
 	private Random random = new Random();
 
 	private UrlExtractor urlExtractor = new UrlExtractor();
-	private String[] HOSTS = new String[] { "www.sueddeutsche.de", "www.zeit.de", "www.spiegel.de", "www.n24.de",
-			"www.rp-online.de" };
+	private String[] HOSTS = new String[] { /*
+											 * "www.sueddeutsche.de",
+											 * "www.zeit.de", "www.spiegel.de",
+											 * "www.n24.de",
+											 */
+	"www.rp-online.de" };
 
 	private CharBuffer charBuffer = CharBuffer.allocate(1000000);
 
@@ -88,10 +95,12 @@ public class Spider {
 					readUrls++;
 
 					if (readUrls % 500 == 0) {
-						urlsToVisit.persist();
+						if (urlsToVisit instanceof PersistedUrlsToVisit) {
+							((PersistedUrlsToVisit) urlsToVisit).persist();
+						}
 					}
 
-					int found = extractLinks(url, html);
+					int found = (true ? 0 : extractLinks(url, html));
 
 					System.out.println(visitedUrls.size() + ": " + url + ", " + html.length() + " bytes, " + found
 							+ " new links. Queue is now " + urlsToVisit.size() + ".");
@@ -220,7 +229,10 @@ public class Spider {
 
 		spideredHtmlFile = new SpideredHtmlFile(new File("spidered-html.txt"));
 
-		urlsToVisit = new PersistedUrlsToVisit(new File("urls-to-visit.txt"));
+		urlsToVisit = // new PersistedUrlsToVisit(new
+						// File("urls-to-visit.txt"));
+
+		readArticles();
 
 		if (urlsToVisit.isEmpty()) {
 			FileRotator rotator = new FileRotator(new File("spidered-html.zip"), false);
@@ -250,7 +262,9 @@ public class Spider {
 				rotator.next();
 			}
 
-			urlsToVisit.persist();
+			if (urlsToVisit instanceof PersistedUrlsToVisit) {
+				((PersistedUrlsToVisit) urlsToVisit).persist();
+			}
 		}
 
 		try {
@@ -272,13 +286,36 @@ public class Spider {
 				System.out.println("Persisting data...");
 
 				visitedUrls.close();
-				urlsToVisit.persist();
+
+				if (urlsToVisit instanceof PersistedUrlsToVisit) {
+					((PersistedUrlsToVisit) urlsToVisit).persist();
+				}
+
 				spideredHtmlFile.close();
 
 				System.out.println("Done.");
 			}
 
 		});
+
+	}
+
+	private UrlsToVisit readArticles() throws IOException {
+		Set<Integer> minors;
+
+		try {
+			minors = (Set<Integer>) new ObjectInputStream(new FileInputStream(new File("articles.ser"))).readObject();
+		} catch (ClassNotFoundException e) {
+			throw new IOException(e);
+		}
+
+		UrlsToVisit result = new UrlsToVisit();
+
+		for (Integer minor : minors) {
+			result.add(new URL("http://www.rp-online.de/1." + minor));
+		}
+
+		return result;
 
 	}
 }

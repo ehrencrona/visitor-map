@@ -55,6 +55,10 @@ public class VisitedUrls implements UrlCollection {
 		return paths.contains(new Utf8String(path));
 	}
 
+	public boolean add(HashableUrl url) {
+		return add(url.toUrl());
+	}
+
 	@Override
 	public boolean add(URL url) {
 		Set<Utf8String> paths = pathsByHost.get(url.getHost().toLowerCase());

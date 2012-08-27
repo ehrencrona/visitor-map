@@ -1,4 +1,6 @@
-package com.velik.recommend.stats;
+package com.velik.recommend.map;
+
+import com.velik.recommend.map.Stresses;
 
 public class QuadrangleBasedStresses implements Stresses {
 

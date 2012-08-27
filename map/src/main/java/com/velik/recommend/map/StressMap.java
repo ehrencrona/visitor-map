@@ -1,12 +1,19 @@
-package com.velik.recommend.stats;
+package com.velik.recommend.map;
 
 import static java.lang.Math.abs;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 
+import java.io.Serializable;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class StressMap {
+public class StressMap implements Serializable {
+	private static final long serialVersionUID = 0L;
+
+	private static final Logger LOGGER = Logger.getLogger(StressMap.class.getName());
+
 	static int[] squares = new int[1025];
 
 	static {
@@ -16,7 +23,6 @@ public class StressMap {
 	}
 
 	public class Move {
-
 		MapPosition from;
 		MapPosition to;
 		int radius;
@@ -30,12 +36,12 @@ public class StressMap {
 		void move() {
 			assert from.distance(to) > radius * 2;
 
-			for (int x = 0; x <= radius * 2; x++)
-				for (int y = 0; y <= radius * 2; y++) {
+			for (int x = -radius; x <= radius; x++)
+				for (int y = -radius; y <= radius; y++) {
 					int fromx = normalizeXCoordinate(from.x + x);
-					int fromy = normalizeXCoordinate(from.y + y);
+					int fromy = normalizeYCoordinate(from.y + y);
 					int tox = normalizeXCoordinate(to.x + x);
-					int toy = normalizeXCoordinate(to.y + y);
+					int toy = normalizeYCoordinate(to.y + y);
 
 					int swap = map[toy][tox];
 
@@ -103,6 +109,10 @@ public class StressMap {
 		private int y1;
 		private int y2;
 
+		public MapArea(MapPosition p1, MapPosition p2) {
+			this(p1.x, p1.y, p2.x, p2.y);
+		}
+
 		public MapArea(int x1, int y1, int x2, int y2) {
 			this.x1 = normalizeXCoordinate(x1);
 			this.y1 = normalizeYCoordinate(y1);
@@ -116,15 +126,21 @@ public class StressMap {
 		}
 
 		public void grow(int by) {
-			assert x2 - x1 + 1 + by * 2 <= width;
-			assert y2 - y1 + 1 + by * 2 <= height;
+			if (((x2 - x1) & xMod) + 1 + by * 2 > width) {
+				x1 = 1;
+				x2 = 0;
+			} else {
+				x1 = normalizeXCoordinate(x1 - by);
+				x2 = normalizeXCoordinate(x2 + by);
+			}
 
-			x1 = normalizeXCoordinate(x1 - by);
-			x2 = normalizeXCoordinate(x2 + by);
-
-			y1 = normalizeYCoordinate(y1 - by);
-			y2 = normalizeYCoordinate(y2 + by);
-
+			if (((y2 - y1) & yMod) + 1 + by * 2 > height) {
+				y1 = 1;
+				y2 = 0;
+			} else {
+				y1 = normalizeYCoordinate(y1 - by);
+				y2 = normalizeYCoordinate(y2 + by);
+			}
 		}
 
 		public MapArea(MapArea area) {
@@ -307,6 +323,14 @@ public class StressMap {
 			return x * 4711 + y;
 		}
 
+		public int getX() {
+			return x;
+		}
+
+		public int getY() {
+			return y;
+		}
+
 	}
 
 	private Stresses stresses;
@@ -329,7 +353,7 @@ public class StressMap {
 
 	RandomNumberGenerator random = new DefaultRandomNumberGenerator();
 
-	StressMap(Stresses stresses, int width, int height) {
+	public StressMap(Stresses stresses, int width, int height) {
 		this.stresses = stresses;
 
 		this.height = height;
@@ -348,7 +372,8 @@ public class StressMap {
 		xMod = width - 1;
 
 		if (height * width != stresses.size()) {
-			throw new RuntimeException("Cells don't add up to size.");
+			throw new RuntimeException("Cells don't add up to size: " + height + ", " + width + ", size "
+					+ stresses.size());
 		}
 
 		map = new int[height][width];
@@ -367,21 +392,37 @@ public class StressMap {
 	void anneal(int generations) {
 		int temperature = START_TEMPERATURE;
 
-		int step = START_TEMPERATURE / generations;
+		double step = (double) START_TEMPERATURE / generations;
 
 		long currentStress = calculateStress();
 
-		while (temperature > 0) {
+		int generation = 0;
+
+		long[] stressChangeByRadius = new long[min(width, height) / 2];
+		int[] radiusCount = new int[stressChangeByRadius.length];
+
+		while (generation < generations) {
 			Move move = randomMove(temperature);
 
 			int stressChange = move.calculateStressChange();
 
+			stressChangeByRadius[move.radius] += abs(stressChange);
+			radiusCount[move.radius]++;
+
+			if (stressChange == 0) {
+				continue;
+			}
+
 			if (stressChange < 0) {
 				move.move();
-			} else {
-				double s = 4.0 * stressChange / currentStress;
+				currentStress += stressChange;
 
-				s = s * s;
+				assert currentStress == calculateStress();
+			} else {
+				double changeRelativeToAverage = 10.0 * stressChange * radiusCount[move.radius]
+						/ stressChangeByRadius[move.radius];
+
+				double s = changeRelativeToAverage * changeRelativeToAverage;
 
 				double t = (double) temperature / START_TEMPERATURE;
 
@@ -390,14 +431,38 @@ public class StressMap {
 				assert p >= 0;
 				assert p <= 1;
 
-				if (random.nextInt(100) < 100 * p) {
+				if (random.nextInt(100) < (int) (100 * p)) {
 					move.move();
+					currentStress += stressChange;
+					/*
+					 * System.out.println(generation + ": Picking bad move: " +
+					 * move + " (with probability " + ((int) (100 * p)) +
+					 * "% because of change " + changeRelativeToAverage + "%): "
+					 * + currentStress);
+					 */
+					assert currentStress == calculateStress();
 				}
 			}
 
-			temperature -= step;
+			temperature = (int) (START_TEMPERATURE - (step * generation));
+			generation++;
+
+			if (generation % 10000 == 0) {
+				LOGGER.log(Level.INFO, "Annealing " + (100 * generation / generations) + "%. Current stress: "
+						+ currentStress + ".");
+			}
 		}
 
+		LOGGER.log(Level.INFO, "Done annealing. Stress: " + currentStress);
+	}
+
+	public long calculateStress(MapPosition position) {
+		return calculateStress(new MapArea(position, position), new PositionSet() {
+			@Override
+			public boolean contains(MapPosition pos) {
+				return true;
+			}
+		});
 	}
 
 	long calculateStress() {
@@ -441,6 +506,7 @@ public class StressMap {
 				if (y == area.y2) {
 					break;
 				}
+
 				y = normalizeYCoordinate(y + 1);
 			} while (true);
 
@@ -455,14 +521,27 @@ public class StressMap {
 	}
 
 	Move randomMove(int t) {
-		int radius = sqrt(random.nextInt(t + 1)) / sqrt(START_TEMPERATURE) * maxPossibleRadiusForMove();
+		int radius = maxPossibleRadiusForMove() * random.nextInt(t + 1) / START_TEMPERATURE;
 
 		MapPosition from = randomPosition();
 
-		int tox = from.x + radius * 2 + 1 + random.nextInt(width - 2 * (2 * radius + 1) + 1);
-		int toy = from.y + radius * 2 + 1 + random.nextInt(height - 2 * (2 * radius + 1) + 1);
+		int tox;
+		int toy;
 
-		MapPosition to = pos(normalizeXCoordinate(tox), normalizeYCoordinate(toy));
+		int verticalFreedom = height - 2 * (2 * radius + 1) + 1;
+		int horizontalFreedom = width - 2 * (2 * radius + 1) + 1;
+
+		if (random.nextInt(max(verticalFreedom, 0) + max(horizontalFreedom, 0)) >= verticalFreedom) {
+			tox = from.x + radius * 2 + 1 + random.nextInt(horizontalFreedom);
+			toy = random.nextInt(width);
+		} else {
+			toy = from.y + radius * 2 + 1 + random.nextInt(verticalFreedom);
+			tox = random.nextInt(height);
+		}
+
+		MapPosition to = pos(tox, toy);
+
+		assert from.distance(to) > radius * 2;
 
 		return new Move(from, to, radius);
 	}
@@ -481,7 +560,7 @@ public class StressMap {
 	}
 
 	private int maxPossibleRadiusForMove() {
-		return ((Math.min(height, width) / 2) - 1) / 2;
+		return ((Math.max(height, width) / 2) - 1) / 2;
 	}
 
 	private MapPosition randomPosition() {
@@ -494,7 +573,6 @@ public class StressMap {
 
 		int result = stresses.get(index1, index2);
 
-		// System.out.println(point1 + " " + point2 + " " + result);
 		return result;
 	}
 
@@ -504,5 +582,41 @@ public class StressMap {
 
 	public Move move(MapPosition from, MapPosition to, int radius) {
 		return new Move(from, to, radius);
+	}
+
+	public void print() {
+		for (int i = 0; i < map.length; i++) {
+			for (int j = 0; j < map[i].length; j++) {
+				System.out.print(pad(map[i][j]) + " ");
+			}
+
+			System.out.println();
+		}
+	}
+
+	private String pad(int i) {
+		String result = Integer.toString(i);
+
+		while (result.length() < 3) {
+			result = " " + result;
+		}
+
+		return result;
+	}
+
+	public Stresses getStresses() {
+		return stresses;
+	}
+
+	public int getIndex(MapPosition position) {
+		return map[position.y][position.x];
+	}
+
+	public int getHeight() {
+		return height;
+	}
+
+	public int getWidth() {
+		return width;
 	}
 }
