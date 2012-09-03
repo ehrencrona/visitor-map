@@ -1,5 +1,8 @@
 package com.velik.recommend.map.ui;
 
+import java.util.Collections;
+import java.util.Map;
+
 import com.velik.recommend.map.StressMap;
 import com.velik.recommend.map.StressMap.MapPosition;
 
@@ -17,7 +20,12 @@ public class StressMapPositionValue implements MapPositionValue {
 
 	@Override
 	public Scale getScale() {
-		return Scale.LINEAR;
+		return Scale.CONTINUOUS;
+	}
+
+	@Override
+	public Map<Integer, String> getLegend() {
+		return Collections.emptyMap();
 	}
 
 }

@@ -25,7 +25,7 @@ import com.velik.recommend.parser.SpideredHtmlZipFileReader;
 
 public class Spider {
 	private static final Logger LOGGER = Logger.getLogger(Spider.class.getName());
-	private static final int TIME_BETWEEN_REVISITS = 10000;
+	private static final int TIME_BETWEEN_REVISITS = 3000;
 
 	private HostSpecificUrlShortener shortener;
 	private UrlsToVisit urlsToVisit;
@@ -84,7 +84,11 @@ public class Spider {
 				try {
 					do {
 						url = urlsToVisit.next(host);
-					} while (!isSane(url));
+
+						if (visitedUrls.contains(url)) {
+							System.out.println(url + " had already been visited. Skipping.");
+						}
+					} while (!isSane(url) && !visitedUrls.contains(url));
 
 					queueEmpty = false;
 
@@ -301,13 +305,16 @@ public class Spider {
 	}
 
 	private UrlsToVisit readArticles() throws IOException {
+		String fileName = "articles.ser";
 		Set<Integer> minors;
 
 		try {
-			minors = (Set<Integer>) new ObjectInputStream(new FileInputStream(new File("articles.ser"))).readObject();
+			minors = (Set<Integer>) new ObjectInputStream(new FileInputStream(new File(fileName))).readObject();
 		} catch (ClassNotFoundException e) {
 			throw new IOException(e);
 		}
+
+		System.out.println("Read " + minors.size() + " articles to visit from " + fileName + ".");
 
 		UrlsToVisit result = new UrlsToVisit();
 

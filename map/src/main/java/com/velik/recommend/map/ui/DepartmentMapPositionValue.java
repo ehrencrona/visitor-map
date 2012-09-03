@@ -2,6 +2,7 @@ package com.velik.recommend.map.ui;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import com.velik.recommend.map.ArticleInfo;
 import com.velik.recommend.map.StressMap;
@@ -11,30 +12,47 @@ import com.velik.recommend.map.StressMatrix;
 public class DepartmentMapPositionValue implements MapPositionValue {
 	private StressMap map;
 	private Map<Integer, ArticleInfo> articleInfos;
-	private Map<String, Integer> departments = new HashMap<String, Integer>();
+	private Map<String, Integer> indexByName = new HashMap<String, Integer>();
+	private Map<Integer, String> nameByIndex = new HashMap<Integer, String>();
 	private StressMatrix matrix;
+	private boolean onlyTopLevel;
+	private double scale;
 
 	public DepartmentMapPositionValue(StressMap map, Map<Integer, ArticleInfo> articleInfos, StressMatrix matrix,
 			boolean onlyTopLevel) {
 		this.map = map;
 		this.articleInfos = articleInfos;
 		this.matrix = matrix;
+		this.onlyTopLevel = onlyTopLevel;
 
 		for (ArticleInfo info : articleInfos.values()) {
-			String current = info.department;
+			String department = getDepartment(info);
 
-			if (onlyTopLevel) {
-				int i = current.indexOf('/');
-
-				if (i > 0) {
-					current = current.substring(0, i);
-				}
-			}
-
-			if (!departments.containsKey(current)) {
-				departments.put(current, departments.size() + 1);
+			if (!indexByName.containsKey(department)) {
+				int index = indexByName.size() + 1;
+				indexByName.put(department, index);
 			}
 		}
+
+		scale = 255.0 / indexByName.size();
+
+		for (Entry<String, Integer> entry : indexByName.entrySet()) {
+			nameByIndex.put((int) (scale * entry.getValue()), entry.getKey());
+		}
+	}
+
+	private String getDepartment(ArticleInfo info) {
+		String current = info.department;
+
+		if (onlyTopLevel) {
+			int i = current.indexOf('/', 1);
+
+			if (i > 0) {
+				current = current.substring(0, i);
+			}
+		}
+
+		return current;
 	}
 
 	@Override
@@ -46,10 +64,10 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 		ArticleInfo articleInfo = articleInfos.get(minor);
 
 		if (articleInfo != null) {
-			Integer departmentIndex = departments.get(articleInfo.department);
+			Integer departmentIndex = indexByName.get(getDepartment(articleInfo));
 
 			if (departmentIndex != null) {
-				return departmentIndex;
+				return (int) (scale * departmentIndex);
 			}
 		}
 
@@ -59,6 +77,11 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 	@Override
 	public Scale getScale() {
 		return Scale.DISCRETE;
+	}
+
+	@Override
+	public Map<Integer, String> getLegend() {
+		return nameByIndex;
 	}
 
 }

@@ -37,6 +37,8 @@ public class StressMatrix implements Stresses, Serializable {
 
 		List<List<Long>> usersByIndex = new ArrayList<List<Long>>();
 
+		int maxUsers = 0;
+
 		{
 			int i = 0;
 
@@ -45,13 +47,26 @@ public class StressMatrix implements Stresses, Serializable {
 
 				usersByIndex.add(entry.getValue());
 
+				if (entry.getValue().size() > maxUsers) {
+					maxUsers = entry.getValue().size();
+				}
+
 				assertSorted(entry.getValue());
 			}
 		}
 
+		int scale = maxUsers * maxUsers / 100;
+
 		for (int i = 0; i < articleCount; i++) {
+			long countI = usersByMinor.get(result.minors[i]).size();
+
 			for (int j = 0; j < i; j++) {
-				result.stress[i][j] = -overlap(usersByIndex.get(i), usersByIndex.get(j));
+				long countJ = usersByMinor.get(result.minors[j]).size();
+
+				long overlap = overlap(usersByIndex.get(i), usersByIndex.get(j));
+				int thisStress = (int) (-scale * overlap / countI / countJ);
+
+				result.stress[i][j] = thisStress;
 			}
 		}
 

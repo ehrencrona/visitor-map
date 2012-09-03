@@ -21,16 +21,21 @@ public class Context extends AbstractContext {
 		this.dataDirectory = dataDirectory;
 	}
 
+	public Map<Integer, Integer> getFaithfulnessByArticle() {
+		return readOrCreate("faithfulness-by-article.ser", new FaithfulnessByArticleFactory(getAccessIterator(),
+				getArticleMinors()));
+	}
+
 	public StressMatrix getStressMatrix() {
 		return readOrCreate("stress-matrix.ser", new CommonReadersStressMatrixFactory(getArticleMinors(),
 				getAccessIterator()));
 	}
 
 	public Map<Integer, ArticleCounter> getAccessesByArticle() {
-		return new AccessByArticleFactory(getAccessIterator()).create();
+		return readOrCreate("count-by-minor.ser", new AccessByArticleFactory(getAccessIterator()));
 	}
 
-	private AccessLogDirectoryReader getAccessIterator() {
+	AccessLogDirectoryReader getAccessIterator() {
 		return new AccessLogDirectoryReader(dataDirectory);
 	}
 
@@ -50,7 +55,7 @@ public class Context extends AbstractContext {
 		return new UnparsedSpideredArticlesVisitee(new File(dataDirectory, "spidered-html-for-som.zip"), 1);
 	}
 
-	public static Context getContext() {
+	public synchronized static Context getContext() {
 		if (context == null) {
 			context = new Context(new File("/projects/recommend/accesslog/data"), true);
 		}

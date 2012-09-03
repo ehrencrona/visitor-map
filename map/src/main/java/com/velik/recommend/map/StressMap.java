@@ -444,7 +444,7 @@ public class StressMap implements Serializable {
 				}
 			}
 
-			temperature = (int) (START_TEMPERATURE - (step * generation));
+			temperature = Math.max((int) (START_TEMPERATURE - (step * generation)), 0);
 			generation++;
 
 			if (generation % 10000 == 0) {
@@ -495,6 +495,8 @@ public class StressMap implements Serializable {
 
 								assert distance <= forceReach && distance > 0;
 
+								// TODO: what about force distance three or
+								// greater?
 								int force = (distance == 1 ? 2 : 1);
 
 								result += force * stress(pos1, pos2);
@@ -521,7 +523,15 @@ public class StressMap implements Serializable {
 	}
 
 	Move randomMove(int t) {
-		int radius = maxPossibleRadiusForMove() * random.nextInt(t + 1) / START_TEMPERATURE;
+		int radius;
+
+		if (t > 0) {
+			long randomSquare = (long) random.nextInt(t + 1) * (long) random.nextInt(t + 1);
+
+			radius = (int) (maxPossibleRadiusForMove() * randomSquare / START_TEMPERATURE / t);
+		} else {
+			radius = 0;
+		}
 
 		MapPosition from = randomPosition();
 

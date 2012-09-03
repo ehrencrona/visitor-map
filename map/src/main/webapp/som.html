@@ -4,65 +4,391 @@
 
 	<script src="jquery-1.7.2.min.js"></script>
 
+	<style>
+		.selected { font-weight: bold; }
+	</style>
 </head>
 
 <body>
 
+<div id="legend" style="float:right; display: none">
+</div>
 
-<canvas id="som" width="1000" height="500" style="width: 1000; height: 500">
+<table border="0">
 
-</canvas> 
+<tr>
 
-<div id="cellInfo" style="position:absolute; border-width: 1px; left: 100px; top: 100px; background-color: white; z: 10; padding: 5px">
-Hej
+<td valign="top">
+<div><b>Color</b></div>
+<ul id="colorDimensions"></ul>
+</td>
+
+<td valign="top">
+<div><b>Size</b></div>
+<ul id="sizeDimensions"></ul>
+</td>
+
+</tr>
+</table>
+
+<div style="width: 1024; height: 1024">
+	<canvas id="som" width="1024" height="1024" style="width: 1024; height: 1024; position: absolute">
+	</canvas> 
+	
+	<canvas id="selection" width="1024" height="1024" style="width: 1024; height: 1024; position: absolute; border-width: 1px; border-color: black; z: 100">
+	</canvas>
+</div>
+
+<div id="cellInfo" style="position:absolute; border-width: 1px; background-color: white; z: 10; padding: 5px; display:none">
 </div>
 
 <script>
 
-var som;
+var map;
 
-$.ajax({
-    url: "service/map",
-    dataType: "json",
-    success: function(json) {
-    	console.log("Loaded stresses.");
+var selectedColorDimension = document.location.hash;
+var selectedSizeDimension = "stress";
 
-		var c = document.getElementById("som");
+if (selectedColorDimension.length > 1) {
+	selectedColorDimension = selectedColorDimension.substring(1);
+}
+
+var jsonByDimension = {};
+
+function withDimension(dimension, f) {
+	if (jsonByDimension[dimension]) {
+		f(jsonByDimension[dimension]);
+	}
+	else {
+		var url = "service/map/" + dimension;
 		
-		som = new Som(c);
-
-		som.setStresses(json.map);
-		som.setLinearScale(json.scale === "linear");
+		var	selected = map && map.getSelectedCell();
 		
-		som.draw();
-    },
-});
+		if (selected) {
+			url += "?pos=" + selected.toString();
+		}
+		
+		console.log("loading " + url);
+		
+		$.ajax({
+		    "url": url,
+		    dataType: "json",
+		    success: function(json) {
+		    	if (dimension !== "relativestress") {
+			    	jsonByDimension[dimension] = json;
+		    	}
+		    
+		    	console.log("Loaded dimension "+ dimension+".");
+		
+				f(json);
+		    },
+		    error: function(e) {
+			    console.log("Failure loading " + url + ".");
+			    eval("console.log(" + e.responseText + ")");
+		    }
+		});
+	}
+}
 
+var dimensionIds = ["type", "stress", "department", "departmentfull", "popularity", "faithfulness"];
+
+for (var i in dimensionIds) {
+	var dimension = dimensionIds[i];
+	
+	$("#colorDimensions").append("<li class=\"colorDimension" + 
+		(selectedColorDimension === dimension ? " selected" : "") + 
+		"\"><a href=\"#" + dimension + "\">" +
+		 dimension +
+		  "</a></li>");
+}
+
+var dimensionIds = ["off", "stress", "popularity", "faithfulness"];
+
+for (var i in dimensionIds) {
+	var dimension = dimensionIds[i];
+	
+	$("#sizeDimensions").append("<li class=\"sizeDimension" +
+		(selectedSizeDimension === dimension ? " selected" : "") + 
+		"\"><a href=\"#" + dimension + "\">" +
+		 dimension +
+		  "</a></li>");
+}
+
+function reload() {
+	var useDimension = selectedColorDimension;
+
+	if (map && map.getSelectedCell()) {
+		useDimension = "relativestress";
+	}
+	
+	withDimension(useDimension, function(colorData) {
+		function useData(sizeData) {
+			var c = document.getElementById("som");
+			var sc = document.getElementById("selection");
+	
+			if (!map) {			
+				map = new Som(c, sc);
+			}
+	
+			map.setStresses(colorData.map);
+			map.setLinearScale(colorData.scale === "continuous");
+			map.setSizes((sizeData ? sizeData.map : null));
+			
+			updateLegend(colorData.legend);
+			
+			map.draw();
+		}
+		
+		if (selectedSizeDimension === "off") {
+			useData(null);
+		}
+		else {
+			withDimension(selectedSizeDimension, useData);
+		}	
+	});
+}
+
+function updateLegend(legend) {
+	$("#legend").html("");
+
+	var size = 0;
+	var lastSelection;
+
+	for (var value in legend) {
+		$("#legend").append("<div data-value=\"" + value + "\" class=\"legendValue\" style=\"background-color: " + map.getColor(value) + "\">" + legend[value] + "</div>");
+		size++;
+	} 
+	
+	$(".legendValue").mouseleave(function() {
+		map.highlight = null;
+		lastSelection = null;
+		map.drawSelection();
+	});
+	
+	$(".legendValue").mousemove(function(e) {
+		var value = parseInt($(e.target).attr("data-value"));
+
+		if (value === lastSelection) {
+			return;
+		}
+		
+		lastSelection = value;
+
+		map.highlight = function(col, row) {
+			var result = map.stresses[row][col]===value;
+			
+			return result;
+		};
+		
+		map.drawSelection();
+	});
+	
+	if (size == 0) {
+		$("#legend").hide();
+	}
+	else {
+		$("#legend").show();
+	}	
+}
+	
 $(document).ready(function() {
-	$("#som").mousemove(
+	var lastCol, lastRow;
+	
+	reload();
+	
+	$(".colorDimension").click(function(e) { 
+		selectedColorDimension = $(e.target).attr("href").substring(1);
+		
+		$(".colorDimension").removeClass("selected");
+		$(e.target).parent().addClass("selected");
+		
+		map.clearSelection();
+		reload();
+	});
+
+	$(".sizeDimension").click(function(e) { 
+		$(".sizeDimension").removeClass("selected");
+		$(e.target).parent().addClass("selected");
+
+		selectedSizeDimension = $(e.target).attr("href").substring(1);
+		reload();
+	});
+
+	$("#selection").click(
 		function(eventInfo) {
-			if (!som) {
+			if (!map) {
+				return;
+			}
+
+			var parentOffset = $(this).offset(); 
+   			var x = eventInfo.pageX - parentOffset.left;
+   			var y = eventInfo.pageY - parentOffset.top;
+				
+			var cell = map.getCellByPixel(x, y);
+
+			if (!cell.isSelected()) {
+				cell.select();
+			}
+			else {
+				map.clearSelection();
+			}
+			
+			reload();
+		}
+	);
+	
+	$("#selection").mouseleave(
+		function() {
+			$("#cellInfo").hide();
+		});
+	
+	$("#selection").mouseenter(
+		function() {
+			$("#cellInfo").show();
+		});
+		
+	$("#selection").mousemove(
+		function(eventInfo) {
+			if (!map) {
 				return;
 			}
 		
 			var parentOffset = $(this).offset(); 
    			var x = eventInfo.pageX - parentOffset.left;
    			var y = eventInfo.pageY - parentOffset.top;
-									
-			som.withCellInfo(x, y, function(cellInfo) {
-				var label = document.getElementById("cellInfo")
-				label.style.left = (cellInfo.cell.x2() + 8) + "px";
-				label.style.top = (cellInfo.cell.y2() + 8) + "px";
-				$(label).html(cellInfo.col + "x" + cellInfo.row + ": " + cellInfo.title + "<br/>" + cellInfo.department);
+				
+			var cell = map.getCellByPixel(x, y);
+
+			if (!cell) {
+				return;
+			}
+												
+			if (cell.row() == lastRow &&
+				cell.col() == lastCol) {
+				return;
+			}
+						
+			cell.withCellInfo(function(cellInfo) {	
+				lastRow = cellInfo.cell.row();
+				lastCol = cellInfo.cell.col(); 	
+			
+				var label = document.getElementById("cellInfo");
+				
+				$(label).html(
+					cellInfo.subline + "<br>" + 
+					cellInfo.title + "<br>" + 
+					cellInfo.department + "<br>" +
+					lastCol + "x" + lastRow + ", " +
+					"1." + cellInfo.minor + ", " + cellInfo.type + ", " + cellInfo.count + " views");
+				
+				var margin = 16;
+				
+				if (x > $("#som").width() / 2) {
+					label.style.left = (cellInfo.cell.x1() - margin - $(label).width() + parentOffset.left) + "px";
+				}
+				else {
+					label.style.left = (cellInfo.cell.x2() + margin + parentOffset.left) + "px";
+				}
+
+				if (y > $("#som").height() / 2) {
+					label.style.top = (cellInfo.cell.y1() - margin - $(label).height() + parentOffset.top) + "px";
+				}
+				else {					
+					label.style.top = (cellInfo.cell.y2() + margin + parentOffset.top) + "px";
+				}
 			}); 
 		} 
 	);
 });
 
-var Som = function(canvas) {
+/**
+ * Converts an HSL color value to RGB. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes h, s, and l are contained in the set [0, 1] and
+ * returns r, g, and b in the set [0, 255].
+ *
+ * @param   Number  h       The hue
+ * @param   Number  s       The saturation
+ * @param   Number  l       The lightness
+ * @return  Array           The RGB representation
+ */
+function hslToRgb(h, s, l) {
+    var r, g, b;
+
+    if(s == 0){
+        r = g = b = l; // achromatic
+    }else{
+        function hue2rgb(p, q, t){
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return p + (q - p) * 6 * t;
+            if(t < 1/2) return q;
+            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+
+    return [r * 255, g * 255, b * 255];
+}
+
+var Som = function(canvas, selectionCanvas) {
+	this.canvas = canvas;
+	this.selectionCanvas = selectionCanvas;
+
 	var that = this;
+	this.selectedRow = -1;
+	this.selectedCol = -1;
 	
+	var pad = function(s) {
+		return (s.length < 2 ? "0" + s : s);
+	}
+
+	this.getColor = function(value) {
+		if (that.linearScale) {
+			var stressColor = 255 - value;
+			stressColor = pad(stressColor.toString(16));
+			return "#" + stressColor + stressColor + stressColor;
+		}
+		else {
+			var color = hslToRgb(value / 255, 0.75, 0.5);  
+/*			
+			var r = (value % 16) * 16;
+			var g = Math.floor(value / 16) * 16;
+			var b = 255 - Math.floor((r + g) / 2);
+*/	
+			var r = Math.round(color[0]);
+			var g = Math.round(color[1]);
+			var b = Math.round(color[2]);
+									
+			return "#" + pad(r.toString(16)) + pad(g.toString(16)) + pad(b.toString(16));
+		}		
+	}
+
 	this.Cell = function(col, row) {		
+		this.select = function() {
+			that.selectedRow = row;
+			that.selectedCol = col;
+		};
+
+		this.isSelected = function() {
+			return that.selectedRow == row &&
+				that.selectedCol == col;
+		};
+		 
+		this.row = function() {
+			return row;
+		};
+
+		this.col = function() {
+			return col;
+		};
+		
 		this.x1 = function() {
 			return Math.round(col * canvas.width / that.cols());
 		};
@@ -72,97 +398,174 @@ var Som = function(canvas) {
 		};
 		
 		this.x2 = function() {
-			return Math.round((col + 1) * canvas.width / that.cols()) - 1;
+			return Math.round((col + 1) * canvas.width / that.cols());
 		};
 		
 		this.y2 = function() {
-			return Math.round((row + 1) * canvas.height / that.rows()) - 1;
+			return Math.round((row + 1) * canvas.height / that.rows());
+		};
+
+		this.withCellInfo = function(f) {				
+			$.ajax({
+			    url: "service/cell/" + col + "x" + row,
+			    dataType: "json",
+			    success: function(json) {
+			    	json.cell = that.getCell(col, row);
+					f(json);
+			    },
+			});
+		};
+		
+		this.draw = function(ctx) {
+			ctx.fillStyle = that.getColor(that.stresses[row][col]);
+			
+			var a = (that.sizes ? Math.sqrt(that.sizes[row][col] / 255) : 1);
+			
+			var width = Math.max(a * (this.x2() - this.x1()),1);
+			var height = Math.max(a * (this.y2() - this.y1()),1);
+			 
+			ctx.fillRect((this.x2() + this.x1() - width) / 2,
+				(this.y1() + this.y2() - height) / 2,
+				width,
+				height);
+		};
+		
+		this.drawSelected = function(ctx, lineWidth) {
+			ctx.strokeStyle="black";
+			
+			if (lineWidth) {
+				ctx.lineWidth = lineWidth;
+			}
+			else {
+				ctx.lineWidth = 4;
+			}
+			
+			var a = (that.sizes ? Math.sqrt(that.sizes[row][col] / 255) : 1);
+			
+			var width = Math.max(a * (this.x2() - this.x1()),1);
+			var height = Math.max(a * (this.y2() - this.y1()),1);
+
+			ctx.strokeRect((this.x2() + this.x1() - width) / 2 - (lineWidth/2),
+				(this.y1() + this.y2() - height) / 2 - (lineWidth/2),
+				width + lineWidth,
+				height + lineWidth);
+		};
+		
+		this.toString = function() {
+			return this.col() + "x" + this.row();
 		};
 	};
+}
 
-	this.setStresses = function(stresses) {
-		this.stresses = stresses;
-	};
-	
-	this.setLinearScale = function(linearScale) {
-		this.linearScale = linearScale;
-	};
-	
-	this.cols = function() {
-		return this.stresses[0].length;	
-	};
-	
-	this.rows = function() {
-		return this.stresses.length;	
-	};
+Som.prototype.clearSelection = function() {
+	this.selectedRow = -1;
+	this.selectedCol = -1;
+};
 
-	this.withCellInfo = function(x, y, f) {
-		var cols = this.cols();
-		var rows = this.rows(); 
+Som.prototype.setSizes = function(sizes) {
+	this.sizes = sizes;
+};
+
+Som.prototype.setStresses = function(stresses) {
+	this.stresses = stresses;
+};
+
+Som.prototype.setLinearScale = function(linearScale) {
+	this.linearScale = linearScale;
+};
+
+Som.prototype.cols = function() {
+	return this.stresses[0].length;	
+};
+
+Som.prototype.rows = function() {
+	return this.stresses.length;	
+};
+
+Som.prototype.getCellByPixel = function(x, y) {
+	var cols = this.cols();
+	var rows = this.rows(); 
+		
+	var col = Math.floor(cols * x / this.canvas.width); 
+	var row = Math.floor(rows * y / this.canvas.height); 
+	
+	if (col < 0 || row < 0) {
+		return;
+	}
+	
+	return this.getCell(col, row);
+};
+
+Som.prototype.getCell = function(col, row) {
+	return new this.Cell(col, row);
+};
+
+Som.prototype.getSelectedCell = function() {
+	if (this.selectedRow < 0 || this.selectedCol < 0) {
+		return null;
+	}
+	
+	return this.getCell(this.selectedCol, this.selectedRow);
+};
+
+Som.prototype.draw = function() {
+	var ctx = this.canvas.getContext("2d");
+	ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	
+	var cols = this.cols();
+	var rows = this.rows(); 
+
+	for (var i = 0; i < cols; i++) {
+		for (var j = 0; j < rows; j++) {
+			if (!(this.stresses.length > j && this.stresses[j].length > i)) {
+				continue;
+			}
 			
-		var col = Math.floor(cols * x / canvas.width); 
-		var row = Math.floor(rows * y / canvas.height); 
-		
-		if (col < 0 || row < 0) {
-			return;
+			cell = this.getCell(i, j);
+
+			cell.draw(ctx);
 		}
-				
-		$.ajax({
-		    url: "service/cell/" + col + "x" + row,
-		    dataType: "json",
-		    success: function(json) {
-		    	json.cell = that.getCell(col, row);
-				f(json);
-		    },
-		});
-	};
+	}
 	
-	this.getCell = function(col, row) {
-		return new this.Cell(col, row);
-	};
+	var maxStress = -9999999;
+	var minStress = 9999999;
 	
-	this.draw = function() {
-		var ctx = canvas.getContext("2d");
-				
-		var pad = function(s) {
-			return (s.length < 2 ? "0" + s : s);
+	for (var i = 0; i < cols; i++) {
+		for (var j = 0; j < rows; j++) {
+			if (this.stresses[j][i] > maxStress) {
+				maxStress = this.stresses[j][i];
+			}
+
+			if (this.stresses[j][i] < minStress) {
+				minStress = this.stresses[j][i];
+			}
 		}
-		
+	}
+			
+	if (this.selectedRow >= 0) {
+		this.getCell(this.selectedCol, this.selectedRow).drawSelected(ctx, 4);
+	}
+	
+	this.drawSelection();
+};
+
+Som.prototype.drawSelection = function() {
+	var selectionCtx = this.selectionCanvas.getContext("2d");
+	selectionCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+	if (this.highlight) {
 		var cols = this.cols();
 		var rows = this.rows(); 
 
 		for (var i = 0; i < cols; i++) {
 			for (var j = 0; j < rows; j++) {
-				if (!(this.stresses.length > j && this.stresses[j].length > i)) {
-					continue;
+				if (this.highlight(i, j)) {
+					this.getCell(i, j).drawSelected(selectionCtx, 2);
 				}
-			
-				var stressColor = 255 - this.stresses[j][i];
-				
-				if (this.linearScale) {
-					stressColor = pad(stressColor.toString(16));
-					ctx.fillStyle = "#" + stressColor + stressColor + stressColor;
-				}
-				else {
-					var r = (stressColor % 16) * 16;
-					var g = Math.floor(stressColor / 16) * 16;
-					var b = 255 - Math.floor((r + g) / 2);
-					
-					ctx.fillStyle = "#" + pad(r.toString(16)) + pad(g.toString(16)) + pad(b.toString(16));
-				}
-				
-				cell = this.getCell(i, j);
-				
-				ctx.fillRect(cell.x1(),
-					cell.y1(),
-					cell.x2() - cell.x1(),
-					cell.y2() - cell.y1());
 			}
 		}
-	};
-	
-}
-
+	}
+};
 
 </script>
 </body>

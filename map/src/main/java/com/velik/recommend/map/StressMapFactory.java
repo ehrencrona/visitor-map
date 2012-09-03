@@ -10,10 +10,10 @@ public class StressMapFactory implements Factory<StressMap> {
 	}
 
 	public StressMap create() {
-		StressMap map = new StressMap(stresses, 64, 32);
+		StressMap map = new StressMap(stresses, 64, 64);
 
-		map.setForceReach(4);
-		map.anneal(3000000);
+		map.setForceReach(3);
+		map.anneal(40000000);
 
 		return map;
 	}

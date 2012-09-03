@@ -1,13 +1,18 @@
 package com.velik.recommend.stats;
 
-public class UserCounter implements Comparable<UserCounter> {
+public class UserCounter implements Counter<UserCounter> {
 	private long id;
+	public int count;
 
 	public UserCounter(long id) {
 		this.id = id;
 	}
 
-	int count;
+	public UserCounter(long id, int count) {
+		this(id);
+
+		this.count = count;
+	}
 
 	@Override
 	public int compareTo(UserCounter o) {
@@ -16,5 +21,10 @@ public class UserCounter implements Comparable<UserCounter> {
 
 	public String toString() {
 		return "user " + id + ", " + count;
+	}
+
+	@Override
+	public int getCount() {
+		return count;
 	}
 }

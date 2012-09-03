@@ -1,13 +1,20 @@
 package com.velik.recommend.stats;
 
-public class ArticleCounter implements Comparable<ArticleCounter> {
+import java.io.Serializable;
+
+public class ArticleCounter implements Counter<ArticleCounter>, Serializable {
 	public int minor;
+	int count;
 
 	public ArticleCounter(int minor) {
 		this.minor = minor;
 	}
 
-	int count;
+	public ArticleCounter(int minor, int count) {
+		this(minor);
+
+		this.count = count;
+	}
 
 	@Override
 	public int compareTo(ArticleCounter o) {
@@ -16,5 +23,9 @@ public class ArticleCounter implements Comparable<ArticleCounter> {
 
 	public String toString() {
 		return "minor " + minor + ", " + count;
+	}
+
+	public int getCount() {
+		return count;
 	}
 }
