@@ -2,34 +2,47 @@
 
 <head>
 
+	<title>Reader Map</title>
+
 	<script src="jquery-1.7.2.min.js"></script>
 
 	<style>
-		.selected { font-weight: bold; }
+		div * { font-family: Helvetica } 
+		#cellInfo { font-family: Helvetica; padding: 5px; background-color: #F7F7F7; box-shadow: 1px 1px 2px #F0F0F0; } 
+		.selected { font-weight: bold }
+		
+		#legend { padding: 5px; float:right; margin-right:10px; display: none; background-color: #F7F7F7; box-shadow: 3px 3px 5px #F0F0F0; }
+		.legendColor { width: 12pt; height: 12pt; display:block; float:left; margin-right: 4px; box-shadow: 1px 1px 2px #E0E0E0 }
+		.legendValue { padding: 2px; margin: 2px; }
+		
+		.select div { float: left; margin: 2px; padding: 4px; background-color: #F7F7F7; box-shadow: 1px 1px 5px #F0F0F0;}
+		.select {height: 35px}
+		.select div a {color: black; text-decoration: none}
+	
+	.clearfix:after {
+		content: ".";
+		display: block;
+		clear: left;
+		visibility: hidden;
+		line-height: 0;
+		height: 0;
+	}
+	 
 	</style>
 </head>
 
 <body>
 
-<div id="legend" style="float:right; display: none">
+<div id="legend" >
 </div>
 
-<table border="0">
+<div id="colorDimensions" class="select"></div>
 
-<tr>
+<div class="clearfix"></div>
 
-<td valign="top">
-<div><b>Color</b></div>
-<ul id="colorDimensions"></ul>
-</td>
+<div id="sizeDimensions" class="select"></div>
 
-<td valign="top">
-<div><b>Size</b></div>
-<ul id="sizeDimensions"></ul>
-</td>
-
-</tr>
-</table>
+<div class="clearfix"></div>
 
 <div style="width: 1024; height: 1024">
 	<canvas id="som" width="1024" height="1024" style="width: 1024; height: 1024; position: absolute">
@@ -90,16 +103,16 @@ function withDimension(dimension, f) {
 	}
 }
 
-var dimensionIds = ["type", "stress", "department", "departmentfull", "popularity", "faithfulness"];
+var dimensionIds = ["type", "stress", "department", "popularity", "faithfulness"];
 
 for (var i in dimensionIds) {
 	var dimension = dimensionIds[i];
 	
-	$("#colorDimensions").append("<li class=\"colorDimension" + 
+	$("#colorDimensions").append("<div class=\"colorDimension" + 
 		(selectedColorDimension === dimension ? " selected" : "") + 
 		"\"><a href=\"#" + dimension + "\">" +
-		 dimension +
-		  "</a></li>");
+		 dimension.substring(0,1).toUpperCase() + dimension.substring(1) +
+		  "</a></div>");
 }
 
 var dimensionIds = ["off", "stress", "popularity", "faithfulness"];
@@ -107,11 +120,11 @@ var dimensionIds = ["off", "stress", "popularity", "faithfulness"];
 for (var i in dimensionIds) {
 	var dimension = dimensionIds[i];
 	
-	$("#sizeDimensions").append("<li class=\"sizeDimension" +
+	$("#sizeDimensions").append("<div class=\"sizeDimension" +
 		(selectedSizeDimension === dimension ? " selected" : "") + 
 		"\"><a href=\"#" + dimension + "\">" +
-		 dimension +
-		  "</a></li>");
+		 dimension.substring(0,1).toUpperCase() + dimension.substring(1) +
+		  "</a></div>");
 }
 
 function reload() {
@@ -155,7 +168,13 @@ function updateLegend(legend) {
 	var lastSelection;
 
 	for (var value in legend) {
-		$("#legend").append("<div data-value=\"" + value + "\" class=\"legendValue\" style=\"background-color: " + map.getColor(value) + "\">" + legend[value] + "</div>");
+		var legendString = legend[value];
+		
+		if (legendString.length > 1) {
+			legendString = legendString.substring(0,1).toUpperCase() + legendString.substring(1);
+		}
+		
+		$("#legend").append("<div data-value=\"" + value + "\" class=\"legendValue\"><span class=\"legendColor\" style=\"background-color: " + map.getColor(value) + "\"></span>" + legendString + "</div>");
 		size++;
 	} 
 	
@@ -195,7 +214,26 @@ $(document).ready(function() {
 	var lastCol, lastRow;
 	
 	reload();
+		
+	$(function() {
+	    var $sidebar   = $("#legend"),
+	        $window    = $(window),
+	        offset     = $sidebar.offset(),
+	        topPadding = 15;
 	
+	    $window.scroll(function() {
+	        if ($window.scrollTop() > offset.top) {
+	            $sidebar.stop().animate({
+	                marginTop: $window.scrollTop() - offset.top + topPadding
+	            });
+	        } else {
+	            $sidebar.stop().animate({
+	                marginTop: 0
+	            });
+	        }
+	    });
+	});
+
 	$(".colorDimension").click(function(e) { 
 		selectedColorDimension = $(e.target).attr("href").substring(1);
 		
@@ -279,7 +317,7 @@ $(document).ready(function() {
 					cellInfo.title + "<br>" + 
 					cellInfo.department + "<br>" +
 					lastCol + "x" + lastRow + ", " +
-					"1." + cellInfo.minor + ", " + cellInfo.type + ", " + cellInfo.count + " views");
+					(cellInfo.type === "standard" ? "" : cellInfo.type + ", ") + cellInfo.count + " views");
 				
 				var margin = 16;
 				

@@ -1,5 +1,7 @@
 package com.velik.recommend.map.ui;
 
+import static com.velik.recommend.map.ui.Obfuscator.obfuscate;
+
 import java.io.IOException;
 
 import javax.servlet.ServletException;
@@ -58,9 +60,11 @@ public class CellInfoServlet extends AbstractHttpServlet {
 				title = title.substring(i + 1).trim();
 			}
 
-			respondWithJson(new JsonMap().put("col", position.getX()).put("minor", minor).put("row", position.getY())
-					.put("title", title).put("subline", subline).put("type", articleInfo.type.toString().toLowerCase())
-					.put("count", count).put("department", articleInfo.department), resp);
+			respondWithJson(
+					new JsonMap().put("col", position.getX()).put("minor", minor).put("row", position.getY())
+							.put("title", obfuscate(title)).put("subline", obfuscate(subline))
+							.put("type", articleInfo.type.toString().toLowerCase()).put("count", count)
+							.put("department", obfuscate(articleInfo.department)), resp);
 		} else {
 			respondWithJson(new JsonMap().put("title", "Unknown article 1." + minor), resp);
 		}

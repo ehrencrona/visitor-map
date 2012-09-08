@@ -36,8 +36,10 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 
 		scale = 255.0 / indexByName.size();
 
+		int i = 0;
+
 		for (Entry<String, Integer> entry : indexByName.entrySet()) {
-			nameByIndex.put((int) (scale * entry.getValue()), entry.getKey());
+			nameByIndex.put((int) (scale * entry.getValue()), Obfuscator.obfuscate(entry.getKey()));
 		}
 	}
 

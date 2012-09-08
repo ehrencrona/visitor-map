@@ -3,6 +3,8 @@ package com.velik.recommend.stats;
 import java.io.Serializable;
 
 public class ArticleCounter implements Counter<ArticleCounter>, Serializable {
+	private static final long serialVersionUID = -8514774304529034787L;
+
 	public int minor;
 	int count;
 

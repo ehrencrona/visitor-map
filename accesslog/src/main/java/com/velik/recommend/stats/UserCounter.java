@@ -1,6 +1,8 @@
 package com.velik.recommend.stats;
 
 public class UserCounter implements Counter<UserCounter> {
+	private static final long serialVersionUID = 0L;
+
 	private long id;
 	public int count;
 
