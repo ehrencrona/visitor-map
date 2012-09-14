@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.velik.json.JsonMap;
 import com.velik.recommend.map.ArticleInfo;
-import com.velik.recommend.map.Context;
+import com.velik.recommend.map.MapContext;
 import com.velik.recommend.map.StressMap;
 import com.velik.recommend.map.StressMap.MapPosition;
 import com.velik.recommend.map.StressMatrix;
@@ -28,7 +28,7 @@ public class CellInfoServlet extends AbstractHttpServlet {
 			throw new ServletException("Path info should start with slash.");
 		}
 
-		Context context = Context.getContext();
+		MapContext context = MapContext.getContext();
 		StressMap map = context.getMap();
 
 		MapPosition position = new PositionParser(map).parse(pathInfo.substring(1));

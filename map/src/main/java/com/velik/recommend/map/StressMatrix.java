@@ -2,6 +2,7 @@ package com.velik.recommend.map;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -13,10 +14,10 @@ public class StressMatrix implements Stresses, Serializable {
 
 	private static final long serialVersionUID = 0L;
 
+	private transient Map<Integer, Integer> indexByMinor;
+
 	int[][] stress;
 	int[] minors;
-
-	transient int[] minorByIndex;
 
 	StressMatrix(int side) {
 		stress = new int[side][];
@@ -134,16 +135,24 @@ public class StressMatrix implements Stresses, Serializable {
 	}
 
 	public int getMinorByIndex(int index) {
-		if (minorByIndex == null) {
-			minorByIndex = new int[minors.length];
+		return minors[index];
+	}
 
-			for (int atIndex = 0; atIndex < minors.length; atIndex++) {
-				int minor = minors[atIndex];
+	public int getIndexByMinor(int articleMinor) throws NoSuchMinorException {
+		if (indexByMinor == null) {
+			indexByMinor = new HashMap<Integer, Integer>();
 
-				minorByIndex[atIndex] = minor;
+			for (int i = 0; i < minors.length; i++) {
+				indexByMinor.put(minors[i], i);
 			}
 		}
 
-		return minorByIndex[index];
+		Integer result = indexByMinor.get(articleMinor);
+
+		if (result == null) {
+			throw new NoSuchMinorException();
+		}
+
+		return result;
 	}
 }

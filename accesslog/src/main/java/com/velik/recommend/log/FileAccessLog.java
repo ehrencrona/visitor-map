@@ -12,7 +12,10 @@ import java.util.logging.Logger;
 public class FileAccessLog implements AccessLog {
 	private static final Logger LOGGER = Logger.getLogger(FileAccessLog.class.getName());
 
+	static final long FORMAT_VERSION_PREFIX = 0x47114711;
 	static final int ITEM_SEPARATOR = -2;
+
+	private static final int CURRENT_FORMAT_VERSION = 2;
 
 	private DataOutputStream stream;
 
@@ -56,7 +59,14 @@ public class FileAccessLog implements AccessLog {
 						+ file + "): " + e, e);
 			}
 
+			boolean appending = file.exists() && append;
+
 			stream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(file, append), 16000));
+
+			if (!appending) {
+				stream.writeLong(FileAccessLog.FORMAT_VERSION_PREFIX);
+				stream.writeInt(CURRENT_FORMAT_VERSION);
+			}
 
 			LOGGER.log(Level.INFO, "Initialized access log " + file.getCanonicalPath() + ".");
 		} catch (IOException e) {
@@ -86,10 +96,12 @@ public class FileAccessLog implements AccessLog {
 			long googleUserId = access.getUserId();
 			int minorId = access.getMinorId();
 			int majorId = access.getMajorId();
+			long date = access.getDate();
 
 			stream.writeLong(googleUserId);
 			stream.writeByte(majorId);
 			stream.writeInt(minorId);
+			stream.writeLong(date);
 			stream.write(ITEM_SEPARATOR);
 		} catch (IOException e) {
 			LOGGER.log(Level.SEVERE, "While writing to " + fileName + ": " + e.getMessage()

@@ -8,4 +8,7 @@ public interface Access {
 
 	long getUserId();
 
+	long getAccessId();
+
+	long getDate();
 }

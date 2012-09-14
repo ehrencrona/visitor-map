@@ -9,12 +9,12 @@
 	<style>
 		div * { font-family: Helvetica } 
 		#cellInfo { font-family: Helvetica; padding: 5px; background-color: #F7F7F7; box-shadow: 1px 1px 2px #F0F0F0; } 
-		.selected { font-weight: bold }
+		.select .selected { font-weight: bold }
 		
 		#legend { padding: 5px; float:right; margin-right:10px; display: none; background-color: #F7F7F7; box-shadow: 3px 3px 5px #F0F0F0; }
 		.legendColor { width: 12pt; height: 12pt; display:block; float:left; margin-right: 4px; box-shadow: 1px 1px 2px #E0E0E0 }
-		.legendValue { padding: 2px; margin: 2px; }
-		
+		.legendValue { padding: 3px; margin: 1px; padding-bottom: 1px }
+		#legend .selected { background-color: #D0D0D0; box-shadow: 1px 1px 2px #A0A0A0 }
 		.select div { float: left; margin: 2px; padding: 4px; background-color: #F7F7F7; box-shadow: 1px 1px 5px #F0F0F0;}
 		.select {height: 35px}
 		.select div a {color: black; text-decoration: none}
@@ -103,7 +103,7 @@ function withDimension(dimension, f) {
 	}
 }
 
-var dimensionIds = ["type", "stress", "department", "popularity", "faithfulness"];
+var dimensionIds = ["type", "stress", "department", "groups", "regio", "sport", "allgemein", "popularity", "faithfulness"];
 
 for (var i in dimensionIds) {
 	var dimension = dimensionIds[i];
@@ -178,26 +178,25 @@ function updateLegend(legend) {
 		size++;
 	} 
 	
-	$(".legendValue").mouseleave(function() {
-		map.highlight = null;
-		lastSelection = null;
-		map.drawSelection();
-	});
-	
-	$(".legendValue").mousemove(function(e) {
+	$(".legendValue").click(function(e) {
 		var value = parseInt($(e.target).attr("data-value"));
 
-		if (value === lastSelection) {
-			return;
+		$(".legendValue").removeClass("selected");
+
+		if (value !== lastSelection) {
+			lastSelection = value;
+			map.highlight = function(col, row) {
+				var result = map.stresses[row][col]===value;
+				
+				return result;
+			};		
+			$(e.target).addClass("selected");
+		}
+		else {
+			map.highlight = null;
+			lastSelection = null;
 		}
 		
-		lastSelection = value;
-
-		map.highlight = function(col, row) {
-			var result = map.stresses[row][col]===value;
-			
-			return result;
-		};
 		
 		map.drawSelection();
 	});
@@ -469,7 +468,7 @@ var Som = function(canvas, selectionCanvas) {
 		};
 		
 		this.drawSelected = function(ctx, lineWidth) {
-			ctx.strokeStyle="black";
+			ctx.strokeStyle="#707070";
 			
 			if (lineWidth) {
 				ctx.lineWidth = lineWidth;

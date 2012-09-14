@@ -7,6 +7,7 @@ import com.velik.util.FetchingIterator;
 
 public class AccessLogDirectoryReader implements Iterable<Access> {
 	private File directory;
+	private long accessId = 0;
 
 	public AccessLogDirectoryReader(File directory) {
 		this.directory = directory;
@@ -32,7 +33,7 @@ public class AccessLogDirectoryReader implements Iterable<Access> {
 							continue;
 						}
 
-						delegate = new AccessLogReader(file).iterator();
+						delegate = new AccessLogReader(file, accessId).iterator();
 
 						break;
 					}
@@ -41,6 +42,11 @@ public class AccessLogDirectoryReader implements Iterable<Access> {
 						return null;
 					}
 				}
+
+				// TODO not really correct; we are assuming the files are
+				// produced on a single front and read chronologically. has to
+				// be fixed.
+				accessId++;
 
 				return delegate.next();
 			}

@@ -12,11 +12,12 @@ import com.velik.recommend.map.StressMatrix;
 public class DepartmentMapPositionValue implements MapPositionValue {
 	private StressMap map;
 	private Map<Integer, ArticleInfo> articleInfos;
-	private Map<String, Integer> indexByName = new HashMap<String, Integer>();
+	protected Map<String, Integer> indexByName = new HashMap<String, Integer>();
 	private Map<Integer, String> nameByIndex = new HashMap<Integer, String>();
 	private StressMatrix matrix;
 	private boolean onlyTopLevel;
 	private double scale;
+	private boolean initialized;
 
 	public DepartmentMapPositionValue(StressMap map, Map<Integer, ArticleInfo> articleInfos, StressMatrix matrix,
 			boolean onlyTopLevel) {
@@ -24,6 +25,10 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 		this.articleInfos = articleInfos;
 		this.matrix = matrix;
 		this.onlyTopLevel = onlyTopLevel;
+	}
+
+	protected synchronized void initialize() {
+		initialized = true;
 
 		for (ArticleInfo info : articleInfos.values()) {
 			String department = getDepartment(info);
@@ -36,14 +41,16 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 
 		scale = 255.0 / indexByName.size();
 
-		int i = 0;
-
 		for (Entry<String, Integer> entry : indexByName.entrySet()) {
 			nameByIndex.put((int) (scale * entry.getValue()), Obfuscator.obfuscate(entry.getKey()));
 		}
 	}
 
-	private String getDepartment(ArticleInfo info) {
+	protected String getDepartment(ArticleInfo info) {
+		if (!initialized) {
+			initialize();
+		}
+
 		String current = info.department;
 
 		if (onlyTopLevel) {
@@ -54,11 +61,19 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 			}
 		}
 
+		if ("".equals(current)) {
+			return "Unbekannt";
+		}
+
 		return current;
 	}
 
 	@Override
 	public long getValue(MapPosition position) {
+		if (!initialized) {
+			initialize();
+		}
+
 		int index = map.getIndex(position);
 
 		int minor = matrix.getMinorByIndex(index);
@@ -83,6 +98,10 @@ public class DepartmentMapPositionValue implements MapPositionValue {
 
 	@Override
 	public Map<Integer, String> getLegend() {
+		if (!initialized) {
+			initialize();
+		}
+
 		return nameByIndex;
 	}
 

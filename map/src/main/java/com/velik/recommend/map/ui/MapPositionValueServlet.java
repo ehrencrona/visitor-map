@@ -8,7 +8,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.velik.recommend.map.Context;
+import com.velik.recommend.map.MapContext;
 import com.velik.recommend.map.StressMap.MapPosition;
 import com.velik.util.Factory;
 import com.velik.util.MemoizingFactory;
@@ -21,13 +21,13 @@ public class MapPositionValueServlet extends AbstractHttpServlet {
 		valueByName.put("stress", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				return new StressMapPositionValue(Context.getContext().getMap());
+				return new StressMapPositionValue(MapContext.getContext().getMap());
 			}
 		}));
 		valueByName.put("type", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				Context context = Context.getContext();
+				MapContext context = MapContext.getContext();
 				return new ArticleTypeMapPositionValue(context.getMap(), context.getArticleInfo(), context
 						.getStressMatrix());
 			}
@@ -35,23 +35,47 @@ public class MapPositionValueServlet extends AbstractHttpServlet {
 		valueByName.put("department", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				Context context = Context.getContext();
+				MapContext context = MapContext.getContext();
 				return new DepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
 						.getStressMatrix(), true);
 			}
 		}));
-		valueByName.put("departmentfull", memoize(new Factory<MapPositionValue>() {
+		valueByName.put("groups", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				Context context = Context.getContext();
-				return new DepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
-						.getStressMatrix(), false);
+				MapContext context = MapContext.getContext();
+				return new MappedDepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
+						.getStressMatrix());
+			}
+		}));
+		valueByName.put("regio", memoize(new Factory<MapPositionValue>() {
+			@Override
+			public MapPositionValue create() {
+				MapContext context = MapContext.getContext();
+				return new MappedDepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
+						.getStressMatrix(), "regio");
+			}
+		}));
+		valueByName.put("sport", memoize(new Factory<MapPositionValue>() {
+			@Override
+			public MapPositionValue create() {
+				MapContext context = MapContext.getContext();
+				return new MappedDepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
+						.getStressMatrix(), "sport");
+			}
+		}));
+		valueByName.put("allgemein", memoize(new Factory<MapPositionValue>() {
+			@Override
+			public MapPositionValue create() {
+				MapContext context = MapContext.getContext();
+				return new MappedDepartmentMapPositionValue(context.getMap(), context.getArticleInfo(), context
+						.getStressMatrix(), "allgemein");
 			}
 		}));
 		valueByName.put("popularity", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				Context context = Context.getContext();
+				MapContext context = MapContext.getContext();
 				return new PopularityMapPositionValue(context.getAccessesByArticle(), context.getMap(), context
 						.getStressMatrix());
 			}
@@ -59,7 +83,7 @@ public class MapPositionValueServlet extends AbstractHttpServlet {
 		valueByName.put("faithfulness", memoize(new Factory<MapPositionValue>() {
 			@Override
 			public MapPositionValue create() {
-				Context context = Context.getContext();
+				MapContext context = MapContext.getContext();
 				return new FaithfulnessMapPositionValue(context.getFaithfulnessByArticle(), context.getMap(), context
 						.getStressMatrix());
 			}
@@ -68,7 +92,7 @@ public class MapPositionValueServlet extends AbstractHttpServlet {
 
 	@Override
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		Context context = Context.getContext();
+		MapContext context = MapContext.getContext();
 
 		String pathInfo = request.getPathInfo();
 

@@ -20,12 +20,12 @@ public class RotatingFileAccessLogTest {
 
 		};
 
-		accessLog.log(new DefaultAccess(1, 1, 2));
+		accessLog.log(new DefaultAccess(1, 1, 2, -1, -1));
 		File oldFile = accessLog.getFile();
 
 		day = 1;
 
-		accessLog.log(new DefaultAccess(2, 3, 4));
+		accessLog.log(new DefaultAccess(2, 3, 4, -1, -1));
 
 		File newFile = accessLog.getFile();
 		Assert.assertFalse(oldFile.getName().equals(newFile.getName()));
@@ -34,11 +34,11 @@ public class RotatingFileAccessLogTest {
 
 		day = 0;
 
-		Assert.assertEquals(1, new AccessLogReader(new File("foo" + accessLog.getFileNameSuffix()))
-				.iterator().next().getMinorId());
+		Assert.assertEquals(1, new AccessLogReader(new File("foo" + accessLog.getFileNameSuffix()), 0).iterator()
+				.next().getMinorId());
 
 		day = 1;
-		Assert.assertEquals(3, new AccessLogReader(new File("foo" + accessLog.getFileNameSuffix()))
-				.iterator().next().getMinorId());
+		Assert.assertEquals(3, new AccessLogReader(new File("foo" + accessLog.getFileNameSuffix()), 0).iterator()
+				.next().getMinorId());
 	}
 }

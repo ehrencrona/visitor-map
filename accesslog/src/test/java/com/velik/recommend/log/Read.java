@@ -8,7 +8,7 @@ public class Read {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		for (Access a : new AccessLogReader(new File("logger.S19LPOL01.rbpd.de.12-08-01.log"))) {
+		for (Access a : new AccessLogReader(new File("logger.S19LPOL01.rbpd.de.12-08-01.log"), 0)) {
 			System.out.println(a);
 		}
 	}

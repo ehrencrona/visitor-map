@@ -12,11 +12,17 @@ import com.velik.recommend.stats.UsersByMinors;
 import com.velik.util.Factory;
 
 public class FaithfulnessByArticleFactory implements Factory<Map<Integer, Integer>> {
-
-	private HashMap<Integer, Integer> result;
+	private UsersByMinors usersByMinors;
+	private Iterable<Access> accessIterator;
 
 	public FaithfulnessByArticleFactory(Iterable<Access> accessIterator, Set<Integer> articles) {
-		UsersByMinors usersByMinors = new UsersByMinors(articles);
+		this.usersByMinors = new UsersByMinors(articles);
+		this.accessIterator = accessIterator;
+	}
+
+	@Override
+	public Map<Integer, Integer> create() {
+		HashMap<Integer, Integer> result = new HashMap<Integer, Integer>();
 
 		Map<Long, UserCounter> pageLoadsByUser = new HashMap<Long, UserCounter>();
 
@@ -34,8 +40,6 @@ public class FaithfulnessByArticleFactory implements Factory<Map<Integer, Intege
 			counter.count++;
 		}
 
-		result = new HashMap<Integer, Integer>();
-
 		for (Entry<Integer, List<Long>> entry : usersByMinors.getUsersByMinors().entrySet()) {
 			Integer minor = entry.getKey();
 			List<Long> readersOfMinor = entry.getValue();
@@ -52,10 +56,7 @@ public class FaithfulnessByArticleFactory implements Factory<Map<Integer, Intege
 
 			result.put(minor, totalPageLoads / readersOfMinor.size());
 		}
-	}
 
-	@Override
-	public Map<Integer, Integer> create() {
 		return result;
 	}
 

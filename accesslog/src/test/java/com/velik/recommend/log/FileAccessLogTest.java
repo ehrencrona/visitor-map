@@ -11,14 +11,17 @@ public class FileAccessLogTest {
 	public void test() throws Exception {
 		FileAccessLog accessLog = new FileAccessLog("foo", false);
 
-		accessLog.log(new DefaultAccess(1, 123, 456));
-		accessLog.log(new DefaultAccess(2, 1234, 0x4567000000000000L));
+		long date1 = System.currentTimeMillis();
+		long date2 = System.currentTimeMillis() + 10;
+
+		accessLog.log(new DefaultAccess(1, 123, 456, 789, date1));
+		accessLog.log(new DefaultAccess(2, 1234, 0x4567000000000000L, 790, date2));
 
 		File file = new File("foo");
 
 		accessLog.close();
 
-		AccessLogReader reader = new AccessLogReader(file);
+		AccessLogReader reader = new AccessLogReader(file, 0);
 
 		Iterator<Access> it = reader.iterator();
 
@@ -26,11 +29,13 @@ public class FileAccessLogTest {
 		Assert.assertEquals(1, access.getMajorId());
 		Assert.assertEquals(123, access.getMinorId());
 		Assert.assertEquals(456, access.getUserId());
+		Assert.assertEquals(date1, access.getDate());
 
 		access = it.next();
 		Assert.assertEquals(2, access.getMajorId());
 		Assert.assertEquals(1234, access.getMinorId());
 		Assert.assertEquals(0x4567000000000000L, access.getUserId());
+		Assert.assertEquals(date2, access.getDate());
 
 		Assert.assertFalse(it.hasNext());
 
@@ -44,7 +49,7 @@ public class FileAccessLogTest {
 		long t = System.currentTimeMillis();
 
 		for (int i = 0; i < 100000; i++) {
-			accessLog.log(new DefaultAccess(1, 123, 456));
+			accessLog.log(new DefaultAccess(1, 123, 456, 789, t));
 		}
 
 		accessLog.close();

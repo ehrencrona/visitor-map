@@ -44,6 +44,8 @@ public class AccessLoggingFilter implements Filter {
 
 	private volatile int runtimeExceptions;
 
+	private volatile long accessId;
+
 	@Override
 	public void destroy() {
 		LOGGER.log(Level.INFO, "Closing access log " + accessLog + "...");
@@ -124,7 +126,8 @@ public class AccessLoggingFilter implements Filter {
 
 			long googleUserId = getGoogleUserId(httpRequest);
 
-			accessLog.log(new DefaultAccess(contentId.getMajor(), contentId.getMinor(), googleUserId));
+			accessLog.log(new DefaultAccess(contentId.getMajor(), contentId.getMinor(), googleUserId, accessId++,
+					System.currentTimeMillis()));
 		} catch (InvalidRequestException e) {
 			if (logInvalidRequests-- > 0) {
 				LOGGER.log(Level.WARNING,

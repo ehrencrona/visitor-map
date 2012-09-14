@@ -1,8 +1,13 @@
 package com.velik.recommend.map.ui;
 
 public class Obfuscator {
+	private static final boolean ENABLE = false;
 
 	public static String obfuscate(String key) {
+		if (!ENABLE) {
+			return key;
+		}
+
 		if (key.length() < 2) {
 			return "**";
 		}

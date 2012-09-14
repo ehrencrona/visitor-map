@@ -10,4 +10,8 @@ public class ArticleInfo implements Serializable {
 	public String title = "";
 	public String department = "";
 	public ArticleType type;
+
+	public String toString() {
+		return title + " (" + department + ")";
+	}
 }

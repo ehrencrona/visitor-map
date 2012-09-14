@@ -11,9 +11,9 @@ import com.velik.util.Factory;
 
 public class ArticleMinorsForMapFactory implements Factory<Set<Integer>> {
 	private static final int TARGET_SIZE = 4096;
-	private Context context;
+	private MapContext context;
 
-	public ArticleMinorsForMapFactory(Context context) {
+	public ArticleMinorsForMapFactory(MapContext context) {
 		this.context = context;
 	}
 
